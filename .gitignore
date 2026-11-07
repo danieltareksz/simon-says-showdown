@@ -1,10 +1,8 @@
-# Build output
-java/target/
+# Compiled classes
+java/bin/
 *.class
-*.jar
 
 # Generated at runtime
-java/config.properties
 java/leaderboard.txt
 java/sounds/*.wav
 
@@ -15,5 +13,7 @@ firmware/**/build/
 .idea/
 *.iml
 .vscode/
+.settings/
+.metadata/
 .DS_Store
 Thumbs.db

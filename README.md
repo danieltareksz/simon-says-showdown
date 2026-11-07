@@ -42,12 +42,23 @@ The laptop uses a third XBee on an XBee Explorer USB.
 
 The XBee and accelerometer run on the 3.3 V rail; everything else runs on 5 V.
 
+## Software design
+
+The laptop program is plain Java, built around the **Observer** pattern, used twice:
+
+- **Pods → game.** `XBeeLink` (or `SimulatedPods` for keyboard play) is the subject. Its reader thread turns each radio frame into a `PodMessage` and notifies its observers: the `GameController` and the `HeartbeatMonitor`.
+- **Game → outputs.** `GameController` is the subject. Every change (new instruction, result, scores) is sent as a `GameUpdate` to its observers: the console display, the game window and the voice.
+
+The game modes use the **Strategy** pattern: `GameController` holds a `ScoringStrategy`, either `ClassicScoring` or `ShowdownScoring`. Radio, heartbeat, game and window each run on their own thread; shared data is guarded with `synchronized`.
+
 ## Repository layout
 
 ```text
 firmware/pod/        sketch both pods run (only the POD constant differs)
 firmware/tests/      one test sketch per module (t1 to t8)
-java/                Maven project: the game (model / view / controller)
+java/src/            the game (one class per file)
+java/test/           console test drivers (RunAllTests)
+java/lib/            jSerialComm, for the USB serial port
 java/sounds/         clip list and scripts that generate the voice clips
 docs/                wiring diagram
 ```
@@ -78,14 +89,21 @@ See [`java/sounds/README.md`](java/sounds/README.md).
 
 ### 4. Build and run the game
 
-Requires Java 17 or newer and Maven.
+Requires a JDK (17 or newer). Put `jSerialComm-2.10.4.jar` in `java/lib/` first (see [`java/lib/README.md`](java/lib/README.md)).
 
 ```bash
 cd java
-mvn package
-java -jar target/simon-says.jar --sim         # keyboard simulator, no pods needed
-java -jar target/simon-says.jar --port COM5   # with the laptop XBee
+javac -cp lib/jSerialComm-2.10.4.jar -d bin src/*.java
+javac -cp bin -d bin test/*.java
+java -cp bin RunAllTests                                   # tests
+
+java -cp bin:lib/jSerialComm-2.10.4.jar Main --sim         # keyboard simulator, no pods needed
+java -cp bin:lib/jSerialComm-2.10.4.jar Main --port COM5   # with the laptop XBee
 ```
+
+On Windows, use `;` instead of `:` in `-cp`.
+
+In Eclipse, import `java/` as a Java project. Mark `src` and `test` as source folders, add the jar in `lib/` to the build path, and run `Main` from the `java/` folder.
 
 ## Message protocol
 
