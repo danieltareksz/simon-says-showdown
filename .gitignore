@@ -1,0 +1,19 @@
+# Build output
+java/target/
+*.class
+*.jar
+
+# Generated at runtime
+java/config.properties
+java/leaderboard.txt
+java/sounds/*.wav
+
+# Arduino build output
+firmware/**/build/
+
+# IDE and OS files
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

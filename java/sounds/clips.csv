@@ -1,0 +1,43 @@
+name,text
+simon_says,Simon says
+then,then
+memory_round,Memory round. Repeat after me.
+joy_up,Push the joystick up
+joy_down,Push the joystick down
+joy_left,Push the joystick left
+joy_right,Push the joystick right
+btn_red_1,Press red
+btn_green_1,Press green
+btn_blue_1,Press blue
+btn_yellow_1,Press yellow
+btn_red_2,Press red twice
+btn_green_2,Press green twice
+btn_blue_2,Press blue twice
+btn_yellow_2,Press yellow twice
+rfid_tag,Scan your card
+dist_low,Hold your hand low
+dist_mid,Hold your hand in the middle
+dist_high,Hold your hand high
+tilt_l,Tilt left
+tilt_r,Tilt right
+tilt_f,Tilt forward
+tilt_b,Tilt back
+get_ready,Get ready
+count_3,Three
+count_2,Two
+count_1,One
+correct,Correct!
+wrong,Wrong!
+too_slow,Too slow!
+gotcha,Simon didn't say!
+level_up,Level up! Faster now.
+p1_joined,Player one is in
+p2_joined,Player two is in
+p1_fastest,Player one was fastest
+p2_fastest,Player two was fastest
+nobody,Nobody got it
+p1_wins,Player one wins!
+p2_wins,Player two wins!
+new_high_score,New high score!
+game_over,Game over
+pod_lost,Pod disconnected. Game paused.
