@@ -8,9 +8,13 @@ public class RunAllTests {
         TestObserver.run();
         TestScoring.run();
         TestLeaderboard.run();
+        TestSimulatedPods.run();
+        TestGameFlow.run();
         // Add new test drivers here
+        // System.exit in both cases: the game and simulator threads started by the tests never end
         if (!Check.summary()) {
             System.exit(1);
         }
+        System.exit(0);
     }
 }
