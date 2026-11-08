@@ -6,7 +6,9 @@ public class RunAllTests {
         TestInstruction.run();
         TestInstructionFactory.run();
         TestObserver.run();
-        // Add new test drivers here (TestScoring, TestLeaderboard, ...)
+        TestScoring.run();
+        TestLeaderboard.run();
+        // Add new test drivers here
         if (!Check.summary()) {
             System.exit(1);
         }
