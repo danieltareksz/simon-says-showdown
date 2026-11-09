@@ -68,7 +68,7 @@ public class Main {
         game.registerObserver(new ConsoleDisplay());
         if (gui) {
             try {
-                game.registerObserver(new GameWindow(game));
+                game.registerObserver(new GameWindow(game, simPods));
             } catch (Exception e) {
                 System.out.println("No window (" + e + "); playing in the console.");
             }

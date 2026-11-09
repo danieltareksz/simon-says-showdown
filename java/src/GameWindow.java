@@ -4,6 +4,8 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -13,14 +15,18 @@ import javax.swing.SwingUtilities;
 
 /**
  * The big-screen display: Simon's instruction, a status line, one line per player, and the
- * lobby controls (mode, names, start).
+ * lobby controls (mode, names, start). In simulator mode the keyboard plays both pods: each
+ * key is turned into the same command a player could type in the console, for example
+ * W gives "p1 joy up".
  * Observer in the Observer pattern (of GameController), exactly like ConsoleDisplay; the game
  * never depends on it and plays the same with --nogui.
  * Threads: update() is called on the game thread and only queues a WindowRefresh; all label
  * changes happen in apply() on the Swing event thread. The buttons only call the controller's
- * synchronized setters. Swing and AWT are used only here and in WindowRefresh.
+ * synchronized setters. A key press calls SimulatedPods.inject() on the Swing event thread,
+ * which takes the simulator's lock and then the controller's, the same order as the console
+ * thread. Swing and AWT are used only here and in WindowRefresh.
  */
-public class GameWindow implements GameObserver, ActionListener {
+public class GameWindow implements GameObserver, ActionListener, KeyListener {
 
     private static final Color BACKGROUND = new Color(20, 22, 34);
     private static final Color TEXT = Color.WHITE;
@@ -28,7 +34,24 @@ public class GameWindow implements GameObserver, ActionListener {
     private static final Color BAD = new Color(240, 80, 80);
     private static final Color ACCENT = new Color(250, 210, 80);
 
+    // Simulator keys: the character at position i on P1_KEYS or P2_KEYS sends COMMANDS[i] for
+    // that pod. Shift + a colour key (! @ # $ and & * ( ) on a US keyboard) is a double press.
+    private static final String[] COMMANDS = {
+        "joy up", "joy left", "joy down", "joy right",
+        "btn red", "btn green", "btn blue", "btn yellow",
+        "btn red 2", "btn green 2", "btn blue 2", "btn yellow 2",
+        "dist low", "dist mid", "dist high",
+        "tilt l", "tilt r", "tilt f", "tilt b",
+        "tag"
+    };
+    private static final String P1_KEYS = "wasd1234!@#$zxcqerft";
+    private static final String P2_KEYS = "ijkl7890&*()nm,uop;y";
+    private static final String KEY_HELP =
+        "P1:  WASD joystick   1-4 buttons (Shift = twice)   Z X C hand low/mid/high   Q E R F tilt L/R/F/B   T card"
+        + "        P2:  IJKL   7-0 (Shift = twice)   N M ,   U O P ;   Y";
+
     private GameController game;
+    private SimulatedPods sim;                                    // null with real pods: no key control
     private JFrame frame;
     private JLabel title = new JLabel("", JLabel.CENTER);         // mode
     private JLabel instruction = new JLabel("", JLabel.CENTER);   // Simon's words, 56 pt
@@ -40,9 +63,13 @@ public class GameWindow implements GameObserver, ActionListener {
     // Empty until someone types, so a name set from the console is never overwritten by stale text
     private JTextField[] nameFields = { new JTextField(""), new JTextField("") };
 
-    /** Builds and shows the window. Called from main before the game thread starts. */
-    public GameWindow(GameController game) {
+    /**
+     * Builds and shows the window. Called from main before the game thread starts.
+     * sim is the keyboard simulator, or null when playing with real pods.
+     */
+    public GameWindow(GameController game, SimulatedPods sim) {
         this.game = game;
+        this.sim = sim;
         frame = new JFrame("Simon Says Showdown");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
@@ -59,7 +86,7 @@ public class GameWindow implements GameObserver, ActionListener {
         middle.add(instruction, BorderLayout.CENTER);
         frame.add(middle, BorderLayout.CENTER);
 
-        JPanel bottom = gridPanel(2, 1);
+        JPanel bottom = gridPanel(sim != null ? 3 : 2, 1);
         JPanel players = gridPanel(1, 2);
         for (int i = 0; i < 2; i++) {
             style(playerLabels[i], 30, TEXT);
@@ -75,6 +102,11 @@ public class GameWindow implements GameObserver, ActionListener {
         controls.add(showdownButton);
         controls.add(startButton);
         bottom.add(controls);
+        if (sim != null) {
+            JLabel keys = new JLabel(KEY_HELP, JLabel.CENTER);
+            style(keys, 13, Color.LIGHT_GRAY);
+            bottom.add(keys);
+        }
         frame.add(bottom, BorderLayout.SOUTH);
 
         classicButton.addActionListener(this);
@@ -82,12 +114,17 @@ public class GameWindow implements GameObserver, ActionListener {
         startButton.addActionListener(this);
         nameFields[0].addActionListener(this);     // Enter in a name field applies the name
         nameFields[1].addActionListener(this);
+        // Keys reach whichever button has the focus; the name fields keep their keys for typing
+        classicButton.addKeyListener(this);
+        showdownButton.addKeyListener(this);
+        startButton.addKeyListener(this);
 
         title.setText(titleText());
         instruction.setText(wrap("Scan your card to join"));
         refreshPlayers();
         frame.setSize(1280, 720);
         frame.setVisible(true);
+        startButton.requestFocusInWindow();            // so the keys work straight away
     }
 
     // ===== Observer: game thread =====
@@ -145,10 +182,36 @@ public class GameWindow implements GameObserver, ActionListener {
             }
         } else if (source == nameFields[0]) {
             applyName(0);
+            startButton.requestFocusInWindow();        // back to playing keys after Enter
         } else if (source == nameFields[1]) {
             applyName(1);
+            startButton.requestFocusInWindow();
         }
         refreshPlayers();
+    }
+
+    /** Simulator keys: one typed character becomes one pod command. */
+    public void keyTyped(KeyEvent e) {
+        if (sim == null) {
+            return;
+        }
+        String key = String.valueOf(e.getKeyChar()).toLowerCase();
+        int i = P1_KEYS.indexOf(key);
+        if (i >= 0) {
+            sim.inject("p1 " + COMMANDS[i]);
+            return;
+        }
+        i = P2_KEYS.indexOf(key);
+        if (i >= 0) {
+            sim.inject("p2 " + COMMANDS[i]);
+        }
+    }
+
+    // Required by KeyListener; typed characters are enough
+    public void keyPressed(KeyEvent e) {
+    }
+
+    public void keyReleased(KeyEvent e) {
     }
 
     private void changeMode(ScoringStrategy s) {

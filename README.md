@@ -103,6 +103,21 @@ java -cp bin:lib/jSerialComm-2.10.4.jar Main --port COM5   # with the laptop XBe
 
 On Windows, use `;` instead of `:` in `-cp`.
 
+#### Playing with the simulator
+
+With `--sim`, both pods are played from the laptop. In the game window, press keys (keep the focus off the name fields; Enter in a name field or a click on a button gives it back):
+
+| Action | Player 1 | Player 2 |
+| --- | --- | --- |
+| Joystick up / left / down / right | `W` `A` `S` `D` | `I` `J` `K` `L` |
+| Press red / green / blue / yellow | `1` `2` `3` `4` | `7` `8` `9` `0` |
+| Press a colour twice | Shift + `1`–`4` | Shift + `7`–`0` |
+| Hand low / middle / high | `Z` `X` `C` | `N` `M` `,` |
+| Tilt left / right / forward / back | `Q` `E` `R` `F` | `U` `O` `P` `;` |
+| Scan card (joins in the lobby) | `T` | `Y` |
+
+Shift + number assumes a US keyboard layout. In the console (also with `--nogui`), type the same actions as commands, for example `p1 joy up`, `p2 btn red 2`, `p1 tag`; `p1 off` and `p1 on` unplug and reconnect a pod. Type `help` for the full list.
+
 In Eclipse, import `java/` as a Java project. Mark `src` and `test` as source folders, add the jar in `lib/` to the build path, and run `Main` from the `java/` folder.
 
 ## Message protocol
