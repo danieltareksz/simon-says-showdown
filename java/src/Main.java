@@ -67,7 +67,11 @@ public class Main {
         // Game observers, in this order: text first, then the voice
         game.registerObserver(new ConsoleDisplay());
         if (gui) {
-            System.out.println("The window is not available yet; playing in the console.");
+            try {
+                game.registerObserver(new GameWindow(game));
+            } catch (Exception e) {
+                System.out.println("No window (" + e + "); playing in the console.");
+            }
         }
         try {
             game.registerObserver(new VoicePlayer(clips));

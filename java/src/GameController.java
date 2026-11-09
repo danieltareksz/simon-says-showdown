@@ -32,6 +32,9 @@ public class GameController extends ConcreteGameSubject implements PodObserver, 
     public static final long NO_VOICE_MS = 1500;      // time to read the instruction with the voice off
     public static final long TICK_MS = 1000;          // countdown tick
 
+    /** INFO text after a memory sequence is spoken; the window then hides the sequence. */
+    public static final String YOUR_TURN = "Your turn!";
+
     // Results of takeStartRequest()
     private static final int NO_REQUEST = 0;
     private static final int READY = 1;
@@ -180,7 +183,7 @@ public class GameController extends ConcreteGameSubject implements PodObserver, 
             Thread.sleep(NO_VOICE_MS);
         }
         if (ins.isMemory()) {
-            tell(GameUpdate.INFO, "Your turn!", null, ps);      // the window hides the sequence now
+            tell(GameUpdate.INFO, YOUR_TURN, null, ps);         // the window hides the sequence now
         }
 
         int n = ins.stepCount();
