@@ -89,19 +89,24 @@ See [`java/sounds/README.md`](java/sounds/README.md).
 
 ### 4. Build and run the game
 
-Requires a JDK (17 or newer). Put `jSerialComm-2.10.4.jar` in `java/lib/` first (see [`java/lib/README.md`](java/lib/README.md)).
+Requires a JDK, version 11 or newer. The only library, jSerialComm, is already in `java/lib/` (see [`java/lib/README.md`](java/lib/README.md)).
+
+Run every command from the `java/` folder, so the game finds `sounds/` and `leaderboard.txt`:
 
 ```bash
 cd java
 javac -cp lib/jSerialComm-2.10.4.jar -d bin src/*.java
 javac -cp bin -d bin test/*.java
-java -cp bin RunAllTests                                   # tests
+java -cp bin RunAllTests                                     # tests
 
-java -cp bin:lib/jSerialComm-2.10.4.jar Main --sim         # keyboard simulator, no pods needed
-java -cp bin:lib/jSerialComm-2.10.4.jar Main --port COM5   # with the laptop XBee
+java -cp bin:lib/jSerialComm-2.10.4.jar Main --sim           # simulator, no pods needed
+java -cp bin:lib/jSerialComm-2.10.4.jar Main --sim --nogui   # simulator, console only
+java -cp bin:lib/jSerialComm-2.10.4.jar Main --port COM5     # with the laptop XBee
 ```
 
 On Windows, use `;` instead of `:` in `-cp`.
+
+If `java` stops with `UnsupportedClassVersionError`, the classes in `bin/` were compiled by a newer JDK than the one running them (Eclipse, for example, may use its own newer JDK). Run the two `javac` lines again with the same JDK as `java`.
 
 #### Playing with the simulator
 
@@ -118,7 +123,7 @@ With `--sim`, both pods are played from the laptop. In the game window, press ke
 
 Shift + number assumes a US keyboard layout. In the console (also with `--nogui`), type the same actions as commands, for example `p1 joy up`, `p2 btn red 2`, `p1 tag`; `p1 off` and `p1 on` unplug and reconnect a pod. Type `help` for the full list.
 
-In Eclipse, import `java/` as a Java project. Mark `src` and `test` as source folders, add the jar in `lib/` to the build path, and run `Main` from the `java/` folder.
+In Eclipse, use File > Import > Existing Projects into Workspace and pick the `java/` folder. Its project file already sets `src` and `test` as source folders and adds the jar, and `Main` runs from `java/`, so `sounds/` and `leaderboard.txt` are found. Eclipse writes its classes to `java/bin`, the same folder as the commands above.
 
 ## Message protocol
 
