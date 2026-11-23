@@ -19,8 +19,8 @@ Simon (the laptop) speaks an instruction and shows it on the big screen. Each pl
 If an instruction doesn't start with "Simon says", the right answer is to do nothing.
 
 - **Classic** (1 player): 3 lives, one point per correct answer, top 10 leaderboard.
-- **Showdown** (2 players): same instruction for both. Fastest correct answer +3, slower correct answer +1, wrong answer −2. First to 21 wins.
-- **Memory rounds** every 5th round: Simon reads a sequence of 2 to 5 actions, and you repeat it from memory.
+- **Showdown** (2 players): same instruction for both. Fastest correct answer +3, slower correct answer +1, wrong answer 0. First to 21 wins, or the leader after 20 rounds (a tie plays on until one round breaks it).
+- **Memory rounds** every 5th round: Simon reads a sequence of 2 or 3 actions, and you repeat it from memory.
 - Time limits shrink and trick instructions become more common every 5 rounds.
 
 ## Hardware (per pod)
