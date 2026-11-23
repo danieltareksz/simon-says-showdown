@@ -18,9 +18,16 @@ public class XBeeLink extends ConcretePodSubject implements PodSender, Runnable 
     private Thread t;
 
     public XBeeLink(String portName) throws IOException {
-        port = SerialPort.getCommPort(portName);
+        try {
+            port = SerialPort.getCommPort(portName);
+        } catch (RuntimeException e) {
+            // jSerialComm throws an unchecked exception when no device has this name
+            throw new IOException("No serial port named " + portName);
+        }
         port.setBaudRate(9600);
-        port.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 0, 0);
+        // semi-blocking: a read returns as soon as any bytes arrive; full blocking would wait
+        // until the reader's whole 8 KB buffer filled, holding back every frame for minutes
+        port.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 0, 0);
         if (!port.openPort()) {
             throw new IOException("Cannot open serial port " + portName);
         }

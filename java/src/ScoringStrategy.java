@@ -16,7 +16,11 @@ public interface ScoringStrategy {
      */
     public String scoreRound(Instruction ins, Player[] players, Answer[] answers, boolean[] correct);
 
-    public boolean isOver(Player[] players);
+    /** True once the game has ended, after roundsPlayed complete rounds. */
+    public boolean isOver(Player[] players, int roundsPlayed);
+
+    /** Most rounds in a game, or 0 for no limit. */
+    public int roundLimit();
 
     /** Text for the game-over screen, for example "Player 1 wins 21 to 15". */
     public String resultText(Player[] players);

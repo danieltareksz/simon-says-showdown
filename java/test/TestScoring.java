@@ -55,14 +55,15 @@ public class TestScoring {
         Check.equal("classic wrong clip", "wrong", play(s, real, ps, new Answer[] { wrong }));
         Check.equal("classic wrong -1 life", 2, p.getLives());
         Check.equal("classic wrong keeps score", 2, p.getScore());
-        Check.isTrue("classic not over at 2 lives", !s.isOver(ps));
+        Check.isTrue("classic not over at 2 lives", !s.isOver(ps, 50));
 
         Check.equal("classic acted on trick clip", "gotcha", play(s, trick, ps, new Answer[] { right }));
         Check.equal("classic trick -1 life", 1, p.getLives());
 
         Check.equal("classic timeout clip", "too_slow", play(s, real, ps, new Answer[] { none }));
         Check.equal("classic timeout -1 life", 0, p.getLives());
-        Check.isTrue("classic over at 0 lives", s.isOver(ps));
+        Check.isTrue("classic over at 0 lives", s.isOver(ps, 1));
+        Check.equal("classic has no round limit", 0, s.roundLimit());
         Check.equal("classic end clip", "game_over", s.endClip(ps));
         Check.equal("classic result text", "Game over: 2 points", s.resultText(ps));
     }
@@ -100,27 +101,27 @@ public class TestScoring {
         Check.equal("dead heat p1 +3", 7, p1.getScore());
         Check.equal("dead heat p2 +3", 7, p2.getScore());
 
-        // Wrong action -2; the only correct player is fastest
+        // Wrong action scores 0; the only correct player is fastest
         clip = play(s, real, ps, new Answer[] {
             answer("P1,ACT,TILT,R,200", null), answer("P2,ACT,TILT,L,800", null) });
         Check.equal("only p2 correct clip", "p2_fastest", clip);
-        Check.equal("wrong action -2", 5, p1.getScore());
+        Check.equal("wrong action 0", 7, p1.getScore());
         Check.equal("only correct gets +3", 10, p2.getScore());
 
         // Timeout on a real instruction: 0
         clip = play(s, real, ps, new Answer[] { answer(null, null), answer(null, null) });
         Check.equal("nobody correct clip", "nobody", clip);
-        Check.equal("timeout p1 0", 5, p1.getScore());
+        Check.equal("timeout p1 0", 7, p1.getScore());
         Check.equal("timeout p2 0", 10, p2.getScore());
 
-        // Trick: still +1, acted -2
+        // Trick: still +1, acted 0
         clip = play(s, trick, ps, new Answer[] { answer(null, null), answer(null, null) });
         Check.equal("trick both still clip", "correct", clip);
-        Check.equal("trick still p1 +1", 6, p1.getScore());
+        Check.equal("trick still p1 +1", 8, p1.getScore());
         Check.equal("trick still p2 +1", 11, p2.getScore());
         clip = play(s, trick, ps, new Answer[] { answer("P1,ACT,TILT,L,300", null), answer(null, null) });
         Check.equal("trick acted clip", "gotcha", clip);
-        Check.equal("acted on trick -2", 4, p1.getScore());
+        Check.equal("acted on trick 0", 8, p1.getScore());
         Check.equal("trick still +1", 12, p2.getScore());
 
         // Multi-step: fastest is decided by the last action
@@ -133,27 +134,40 @@ public class TestScoring {
             answer("P2,ACT,TILT,L,300", "P2,ACT,JOY,UP,600") });
         Check.equal("two-step: last action decides", "p2_fastest", clip);
 
-        // Floor at 0
+        // A wrong answer never takes points away
         p1.setScore(1);
         play(s, real, ps, new Answer[] { answer("P1,ACT,TILT,R,200", null), answer(null, null) });
-        Check.equal("score floors at 0", 0, p1.getScore());
+        Check.equal("wrong keeps the score", 1, p1.getScore());
 
         // Winning
         p1.setScore(20);
         p2.setScore(3);
-        Check.isTrue("20 is not a win", !s.isOver(ps));
+        Check.isTrue("20 is not a win", !s.isOver(ps, 5));
         p1.setScore(21);
         p2.setScore(15);
-        Check.isTrue("21 wins", s.isOver(ps));
+        Check.isTrue("21 wins", s.isOver(ps, 5));
         Check.equal("p1 win clip", "p1_wins", s.endClip(ps));
         Check.equal("result text", "Ann wins 21 to 15", s.resultText(ps));
         p1.setScore(21);
         p2.setScore(21);
-        Check.isTrue("tie at 21 plays on", !s.isOver(ps));
+        Check.isTrue("tie at 21 plays on", !s.isOver(ps, 5));
         p2.setScore(22);
-        Check.isTrue("22 to 21 wins", s.isOver(ps));
+        Check.isTrue("22 to 21 wins", s.isOver(ps, 5));
         Check.equal("p2 win clip", "p2_wins", s.endClip(ps));
         Check.equal("p2 result text", "Bob wins 22 to 21", s.resultText(ps));
+
+        // Round limit: the leader after 20 rounds wins; a tie plays on
+        Check.equal("showdown round limit", 20, s.roundLimit());
+        p1.setScore(12);
+        p2.setScore(9);
+        Check.isTrue("19 rounds: not over", !s.isOver(ps, 19));
+        Check.isTrue("20 rounds: leader wins", s.isOver(ps, 20));
+        Check.equal("limit result text", "Ann wins 12 to 9", s.resultText(ps));
+        p2.setScore(12);
+        Check.isTrue("tie after 20 rounds plays on", !s.isOver(ps, 20));
+        p2.setScore(13);
+        Check.isTrue("tie broken in round 21", s.isOver(ps, 21));
+        Check.equal("tie-break winner clip", "p2_wins", s.endClip(ps));
     }
 
     public static void run() {

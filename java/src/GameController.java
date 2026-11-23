@@ -133,7 +133,7 @@ public class GameController extends ConcreteGameSubject implements PodObserver, 
         tell(GameUpdate.SCORES, scoreText(ps, rules), null, ps);
         countdown(ps);
         int round = 1;
-        while (!rules.isOver(ps)) {
+        while (!rules.isOver(ps, round - 1)) {
             if (isPaused()) {
                 waitForReconnect(ps);
                 countdown(ps);
@@ -143,6 +143,17 @@ public class GameController extends ConcreteGameSubject implements PodObserver, 
             }
         }
         gameOver(ps, rules);
+    }
+
+    /** "Round 7", "Round 7 of 20", or "Round 21 (tie-break)" once past the limit. */
+    private String roundText(int round, int limit) {
+        if (limit == 0) {
+            return "Round " + round;
+        }
+        if (round > limit) {
+            return "Round " + round + " (tie-break)";
+        }
+        return "Round " + round + " of " + limit;
     }
 
     /** "Get ready", then 3, 2, 1 with a beep on the pods, about one second apart. */
@@ -173,7 +184,7 @@ public class GameController extends ConcreteGameSubject implements PodObserver, 
             announcedLevel = level;
             tell(GameUpdate.INFO, "Level up! Level " + level, "level_up", ps);
         }
-        tell(GameUpdate.INFO, "Round " + round, null, ps);
+        tell(GameUpdate.INFO, roundText(round, rules.roundLimit()), null, ps);
 
         // The voice observer blocks until Simon has finished, so GO follows the last word
         GameUpdate u = new GameUpdate(GameUpdate.INSTRUCTION, ins.text(clips), ps);

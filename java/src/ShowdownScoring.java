@@ -1,14 +1,15 @@
 /**
- * Showdown mode rules: two players, same instruction, first to 21 wins.
+ * Showdown mode rules: two players, same instruction; first to 21, or the leader after 20 rounds, wins.
  * Concrete Strategy in the Strategy pattern; GameController is the context.
  * The players array is always {P1, P2}, so index 0 is player one.
  */
 public class ShowdownScoring implements ScoringStrategy {
 
     public static final int WIN_SCORE = 21;
+    public static final int ROUND_LIMIT = 20;         // later rounds get harder, so games can't run forever
     public static final int FASTEST_POINTS = 3;
     public static final int CORRECT_POINTS = 1;
-    public static final int WRONG_POINTS = -2;
+    public static final int WRONG_POINTS = 0;         // a wrong answer scores nothing (was -2: too harsh in play)
 
     public int playersNeeded() {
         return 2;
@@ -22,8 +23,8 @@ public class ShowdownScoring implements ScoringStrategy {
     }
 
     /**
-     * Real instruction: fastest correct +3, other correct +1, wrong action -2, no action 0.
-     * Trick: stayed still +1, acted -2. Player.addScore keeps scores at 0 or more.
+     * Real instruction: fastest correct +3, other correct +1, wrong action or no action 0.
+     * Trick: stayed still +1, acted 0. Player.addScore keeps scores at 0 or more.
      */
     public String scoreRound(Instruction ins, Player[] players, Answer[] answers, boolean[] correct) {
         if (!ins.isSimonSays()) {
@@ -69,11 +70,19 @@ public class ShowdownScoring implements ScoringStrategy {
         return fastest == 0 ? "p1_fastest" : "p2_fastest";
     }
 
-    /** Over once someone reaches 21 and the scores differ; a tie at 21 or more plays on. */
-    public boolean isOver(Player[] players) {
+    /**
+     * Over once someone reaches 21, or after 20 rounds, with the higher score winning.
+     * A tie at either point plays on until one round breaks it.
+     */
+    public boolean isOver(Player[] players, int roundsPlayed) {
         int a = players[0].getScore();
         int b = players[1].getScore();
-        return Math.max(a, b) >= WIN_SCORE && a != b;
+        boolean reached = Math.max(a, b) >= WIN_SCORE || roundsPlayed >= ROUND_LIMIT;
+        return reached && a != b;
+    }
+
+    public int roundLimit() {
+        return ROUND_LIMIT;
     }
 
     public String resultText(Player[] players) {

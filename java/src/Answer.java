@@ -6,7 +6,19 @@ public class Answer {
     private ArrayList<PodMessage> acts = new ArrayList<PodMessage>();
     private boolean timedOut;
 
-    public void add(PodMessage act)             { acts.add(act); }
+    /**
+     * Keeps the actions in the order they happened (their ms after GO), not the order they arrived:
+     * a pod reports a button 400 ms late (it waits for a double press) and a tilt or hand height
+     * after its hold, so a quick next action can arrive first.
+     */
+    public void add(PodMessage act) {
+        int i = acts.size();
+        while (i > 0 && acts.get(i - 1).getMs() > act.getMs()) {
+            i--;
+        }
+        acts.add(i, act);
+    }
+
     public void setTimedOut()                   { timedOut = true; }
     public boolean isTimedOut()                 { return timedOut; }
     public ArrayList<PodMessage> getActs()      { return acts; }

@@ -36,8 +36,13 @@ public class ClassicScoring implements ScoringStrategy {
         return "wrong";
     }
 
-    public boolean isOver(Player[] players) {
+    /** Over when the lives run out; Classic has no round limit. */
+    public boolean isOver(Player[] players, int roundsPlayed) {
         return players[0].getLives() == 0;
+    }
+
+    public int roundLimit() {
+        return 0;
     }
 
     public String resultText(Player[] players) {

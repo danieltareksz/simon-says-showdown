@@ -20,6 +20,21 @@ public class TestInstruction {
     public static void run() {
         Player p1 = new Player("Player 1", "P1", "0415AB3C9D");
 
+        // A button is reported 400 ms late, so the next action's report can arrive first
+        ArrayList<Step> two = new ArrayList<Step>();
+        two.add(new Step("BTN", "BLUE_1"));
+        two.add(new Step("JOY", "RIGHT"));
+        Instruction memory = new Instruction(two, true, 5000, true);
+        Answer late = new Answer();
+        late.add(PodMessage.parse("P1,ACT,JOY,RIGHT,600"));
+        late.add(PodMessage.parse("P1,ACT,BTN,BLUE_1,300"));
+        Check.isTrue("actions judged in the order they happened", Judge.isCorrect(memory, late.getActs(), p1));
+        Check.equal("last action is the latest one", 600L, late.lastMs());
+        Answer wrongOrder = new Answer();
+        wrongOrder.add(PodMessage.parse("P1,ACT,BTN,BLUE_1,700"));
+        wrongOrder.add(PodMessage.parse("P1,ACT,JOY,RIGHT,400"));
+        Check.isTrue("really done in the wrong order is still wrong", !Judge.isCorrect(memory, wrongOrder.getActs(), p1));
+
         Instruction red2 = make(true, "BTN", "RED_2");
         Check.isTrue("red twice matches RED_2", red2.matches(acts("P1,ACT,BTN,RED_2,300"), p1));
         Check.isTrue("red once does not match RED_2", !red2.matches(acts("P1,ACT,BTN,RED_1,300"), p1));

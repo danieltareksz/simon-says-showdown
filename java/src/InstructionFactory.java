@@ -14,6 +14,14 @@ public class InstructionFactory {
         { new Step("TILT", "L"), new Step("TILT", "R"), new Step("TILT", "F"), new Step("TILT", "B") }
     };
 
+    // How often each row above is picked (out of their total): the hand-height sensor misreads
+    // in play, so it comes up about 1 round in 17 and never in a memory sequence
+    private int[] weights = { 4, 4, 4, 1, 4 };
+    private static final int HAND_ROW = 3;
+
+    public static final int MEMORY_MAX_STEPS = 3;
+    public static final long MEMORY_MS_PER_STEP = 2500;
+
     private Random rng;
     private Step lastStep;   // two rounds in a row never open with the same step
 
@@ -25,22 +33,42 @@ public class InstructionFactory {
     public Instruction next(int round) {
         int level = DifficultyManager.level(round);
         if (round % 5 == 0) {
-            int n = Math.min(5, 1 + level);                      // 2, 3, 4, then 5 steps
-            return new Instruction(randomSteps(n), true, 2000L * n, true);
+            int n = Math.min(MEMORY_MAX_STEPS, 1 + level);       // 2 steps, then 3
+            return new Instruction(randomSteps(n, false), true, MEMORY_MS_PER_STEP * n, true);
         }
         int n = 1;
         if (level >= 3 && rng.nextBoolean()) {                   // two-step from level 3
             n = 2;
         }
         boolean real = rng.nextDouble() >= DifficultyManager.trickChance(round);
-        return new Instruction(randomSteps(n), real, DifficultyManager.timeLimitMs(round) * n, false);
+        return new Instruction(randomSteps(n, true), real, DifficultyManager.timeLimitMs(round) * n, false);
     }
 
-    private ArrayList<Step> randomSteps(int n) {
+    /** Picks a sensor row by weight; the hand-height row only if allowed. */
+    private int randomSensor(boolean handAllowed) {
+        int total = 0;
+        for (int i = 0; i < weights.length; i++) {
+            if (handAllowed || i != HAND_ROW) {
+                total += weights[i];
+            }
+        }
+        int r = rng.nextInt(total);
+        for (int i = 0; i < weights.length; i++) {
+            if (handAllowed || i != HAND_ROW) {
+                if (r < weights[i]) {
+                    return i;
+                }
+                r -= weights[i];
+            }
+        }
+        return 0;                              // not reached: r is always below the total
+    }
+
+    private ArrayList<Step> randomSteps(int n, boolean handAllowed) {
         ArrayList<Step> steps = new ArrayList<Step>();
         boolean hasScan = false;
         while (steps.size() < n) {
-            Step[] sensor = actions[rng.nextInt(actions.length)];   // each sensor equally likely,
+            Step[] sensor = actions[randomSensor(handAllowed)];     // a sensor by weight,
             Step s = sensor[rng.nextInt(sensor.length)];            // then one of its commands
             Step prev = steps.size() == 0 ? lastStep : steps.get(steps.size() - 1);
             if (clashes(s, prev)) {
