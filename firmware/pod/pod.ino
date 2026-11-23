@@ -1,8 +1,9 @@
 // Simon Says Showdown - pod firmware (LilyPad Arduino 328)
-// One sketch for both pods: only POD changes.
+// One sketch for both pods: only POD_NUMBER changes. Each pod has its own tuning block below,
+// because the joystick and the tilt controller sit differently in each box.
 #include <SoftwareSerial.h>
 
-const char POD[] = "P1";               // "P2" on pod 2
+#define POD_NUMBER 2                   // 1 or 2: set before uploading to each pod
 
 // ===== Pod pin map (identical on P1 and P2) =====
 // Hardware Serial RX (D0) <- Parallax RFID SOUT, 2400 baud
@@ -28,14 +29,41 @@ const uint8_t BTN_YELLOW = A5;
 const uint8_t BTN_PINS[4]  = {BTN_RED, BTN_GREEN, BTN_BLUE, BTN_YELLOW};
 const char*   BTN_NAMES[4] = {"RED", "GREEN", "BLUE", "YELLOW"};
 
-// ===== Tuning: set per pod from the firmware/tests readings =====
-const int   JOY_DEAD   = 350;          // counts from centre before a direction counts
-const float TILT_DEG   = 30.0;         // degrees before a tilt counts
-float       countsPerG = 68.0;         // measured with t6_tilt
-const int   ZONE_LOW[2]  = {5, 15};    // cm
-const int   ZONE_MID[2]  = {18, 28};
-const int   ZONE_HIGH[2] = {32, 45};
-const unsigned long ZONE_HOLD  = 300;  // ms a hand must stay in a zone
+// ===== Tuning per pod, from the firmware/tests readings =====
+// Joystick: after the swap and flips, "h" > 0 must mean RIGHT and "v" > 0 must mean DOWN.
+// Tilt: TILT_FP holds a "fingerprint" per direction (forward, back, left, right): the change
+// from the flat reading on A2 and A3 at the point where that tilt should count. Measured with
+// t6_tilt, so it also covers a sensor mounted at an angle or with unequal axes.
+#if POD_NUMBER == 1
+const char  POD[]       = "P1";
+const int   JOY_DEAD    = 300;         // full push reads about 500 from centre on this stick
+const bool  JOY_SWAP    = true;        // t4: A0 moves with up/down, A1 with left/right
+const bool  JOY_FLIP_H  = true;        // t4: pushing right lowers A1
+const bool  JOY_FLIP_V  = false;       // t4: pushing down raises A0
+// t6: A2 rises tilting forward, A3 rises tilting left; 34 counts is about 30 degrees
+const int   TILT_FP[4][2] = {{34, 0}, {-34, 0}, {0, 34}, {0, -34}};
+const int   ZONE_LOW[2]  = {2, 8};     // cm; t5: hand low reads 3-6
+const int   ZONE_MID[2]  = {10, 17};   // t5: hand in the middle reads 11-14
+const int   ZONE_HIGH[2] = {20, 30};   // t5: hand high reads 22-24
+#else
+const char  POD[]       = "P2";
+const int   JOY_DEAD    = 300;         // full push reads about 500 from centre on this stick
+const bool  JOY_SWAP    = true;        // t4: A0 moves with up/down, A1 with left/right
+const bool  JOY_FLIP_H  = false;       // t4: pushing right raises A1
+const bool  JOY_FLIP_V  = true;        // t4: pushing down lowers A0
+// t6 deliberate tilts read F +60,+46  B -68,-51  L -56,+2  R +60,-3; a tilt counts at 60% of those
+const int   TILT_FP[4][2] = {{36, 28}, {-41, -31}, {-34, 1}, {36, -2}};
+const int   ZONE_LOW[2]  = {2, 9};     // cm; t5: hand low reads 4-7
+const int   ZONE_MID[2]  = {11, 20};   // t5: hand in the middle reads 12-14
+const int   ZONE_HIGH[2] = {23, 35};   // t5: hand high reads 26-27
+#endif
+
+// Same on both pods
+const char  TILT_DIRS[4] = {'F', 'B', 'L', 'R'};   // order of the TILT_FP rows
+const float TILT_KEEP  = 0.75;         // share of its fingerprint a reported tilt must keep (hysteresis)
+const unsigned long ZONE_HOLD  = 500;  // ms a hand must stay in a zone; passing through doesn't count
+const byte ZONE_MISSES = 2;            // stray readings in a row ignored before a hand counts as moved
+const unsigned long TILT_HOLD  = 150;  // ms a tilt must last, so shakes and bumps don't count
 const unsigned long DOUBLE_GAP = 400;  // ms window for a double press, per button
 const unsigned long TAG_REPEAT = 1500; // ms to ignore the same tag
 
@@ -84,10 +112,6 @@ int readAvg(uint8_t pin) {                 // 1 throwaway read after switching c
   return s / 4;
 }
 
-float toDeg(int counts) {
-  return asin(constrain(counts / countsPerG, -1.0, 1.0)) * 57.2958;
-}
-
 void calibrate() {                         // hold controllers flat, hands off
   long jx = 0, jy = 0, tx = 0, ty = 0;
   for (byte i = 0; i < 16; i++) {
@@ -117,10 +141,13 @@ const char* zoneOf(int cm) {
 void checkJoystick() {
   static char last = 0;
   int dx = readAvg(JOY_X) - joyX0, dy = readAvg(JOY_Y) - joyY0;
+  int h = JOY_SWAP ? dy : dx, v = JOY_SWAP ? dx : dy;     // turn raw axes into right/down for this pod
+  if (JOY_FLIP_H) h = -h;
+  if (JOY_FLIP_V) v = -v;
   char d = 0;
-  if (abs(dx) >= JOY_DEAD || abs(dy) >= JOY_DEAD)
-    d = abs(dx) > abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');   // swap if t4_joystick shows an axis reversed
-  else if (last && (abs(dx) > JOY_DEAD - 80 || abs(dy) > JOY_DEAD - 80))
+  if (abs(h) >= JOY_DEAD || abs(v) >= JOY_DEAD)
+    d = abs(h) > abs(v) ? (h > 0 ? 'R' : 'L') : (v > 0 ? 'D' : 'U');
+  else if (last && (abs(h) > JOY_DEAD - 80 || abs(v) > JOY_DEAD - 80))
     d = last;                                                              // hysteresis
   if (d && d != last)
     report("JOY", d == 'U' ? "UP" : d == 'D' ? "DOWN" : d == 'L' ? "LEFT" : "RIGHT", millis());
@@ -128,16 +155,32 @@ void checkJoystick() {
 }
 
 void checkTilt() {
-  static char last = 0;
-  float r = toDeg(readAvg(TILT_X) - tiltX0);
-  float p = toDeg(readAvg(TILT_Y) - tiltY0);
+  static char last = 0;                    // direction last reported, or 0 back at level
+  static char held = 0;                    // direction seen now, waiting out TILT_HOLD
+  static unsigned long heldSince = 0;
+  float dx = readAvg(TILT_X) - tiltX0, dy = readAvg(TILT_Y) - tiltY0;
+  float len = sqrt(dx * dx + dy * dy);
   char d = 0;
-  if (fabs(r) > TILT_DEG || fabs(p) > TILT_DEG)
-    d = fabs(r) > fabs(p) ? (r > 0 ? 'R' : 'L') : (p > 0 ? 'F' : 'B');    // swap if t6_tilt shows an axis reversed
-  else if (last && (fabs(r) > TILT_DEG - 8 || fabs(p) > TILT_DEG - 8))
-    d = last;                                                              // hysteresis
-  if (d && d != last) { char v[2] = {d, 0}; report("TILT", v, millis()); }
-  last = d;
+  if (len > 0) {
+    // the fingerprint pointing the same way as this reading (largest cosine) is the direction
+    byte best = 0;
+    float bestCos = -2, bestShare = 0;
+    for (byte i = 0; i < 4; i++) {
+      float fx = TILT_FP[i][0], fy = TILT_FP[i][1];
+      float dot = dx * fx + dy * fy, fl2 = fx * fx + fy * fy;
+      float c = dot / (len * sqrt(fl2));
+      if (c > bestCos) { bestCos = c; best = i; bestShare = dot / fl2; }   // share of the fingerprint reached
+    }
+    if (bestShare >= 1.0) d = TILT_DIRS[best];
+    else if (last == TILT_DIRS[best] && bestShare >= TILT_KEEP) d = last;  // hysteresis
+  }
+  if (d != held) { held = d; heldSince = millis(); }
+  if (!d) last = 0;
+  else if (d != last && millis() - heldSince >= TILT_HOLD) {
+    char v[2] = {d, 0};
+    report("TILT", v, heldSince);          // timed from the start of the tilt, like the hand zones
+    last = d;
+  }
 }
 
 void checkButtons() {                      // 4 coloured buttons, each with its own timing
@@ -160,12 +203,21 @@ void checkButtons() {                      // 4 coloured buttons, each with its 
 }
 
 void checkDistance() {
-  static const char* zone = 0;
+  static const char* zone = 0;             // zone the hand is held in, or 0
   static unsigned long zoneSince = 0;
+  static byte misses = 0;                  // readings in a row that disagree with zone
+  static unsigned long missSince = 0;      // when the first of them came
   static bool sent = false;
   const char* z = zoneOf(readCm());
-  if (z != zone) { zone = z; zoneSince = millis(); sent = false; }
-  else if (zone && !sent && millis() - zoneSince >= ZONE_HOLD) {
+  unsigned long now = millis();
+  if (z == zone) misses = 0;
+  else {
+    if (misses == 0) missSince = now;
+    if (!zone || ++misses > ZONE_MISSES) {   // a stray echo or two doesn't restart the hold
+      zone = z; zoneSince = missSince; sent = false; misses = 0;   // timed from its first reading
+    }
+  }
+  if (zone && !sent && now - zoneSince >= ZONE_HOLD) {
     report("DIST", zone, zoneSince);                   // timed from entering the zone
     sent = true;
   }
