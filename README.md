@@ -14,7 +14,7 @@ Simon (the laptop) speaks an instruction and shows it on the big screen. Each pl
 | Four coloured buttons | Press red / green / blue / yellow, once or twice |
 | RFID reader | Scan your card |
 | Ultrasonic sensor | Hold your hand low / in the middle / high |
-| Tilt controller | Tilt left / right / forward / back |
+| Accelerometer inside the pod | Tilt the pod left / right / forward / back |
 
 If an instruction doesn't start with "Simon says", the right answer is to do nothing.
 
@@ -25,7 +25,7 @@ If an instruction doesn't start with "Simon says", the right answer is to do not
 
 ## Hardware (per pod)
 
-LilyPad Arduino 328 · LilyPad XBee · 4 tactile buttons · RGB LED · passive buzzer · HC-SR04 · joystick · LilyPad accelerometer (ADXL335) · Parallax 125 kHz serial RFID reader · AMS1117-3.3 regulator · USB power bank.
+LilyPad Arduino 328 · LilyPad XBee · 4 arcade buttons · RGB LED · passive buzzer · HC-SR04 · joystick · LilyPad accelerometer (ADXL335) · Parallax 125 kHz serial RFID reader · FTDI Basic (5 V) · USB power bank.
 
 The laptop uses a third XBee on an XBee Explorer USB.
 
@@ -40,7 +40,9 @@ The laptop uses a third XBee on an XBee Explorer USB.
 | D5, D6, D9 | RGB red, green, blue | A2, A3 | Accelerometer X, Y |
 | D7, D8 | HC-SR04 TRIG, ECHO | A4, A5 | Blue, yellow buttons |
 
-The XBee and accelerometer run on the 3.3 V rail; everything else runs on 5 V.
+Power comes from the power bank through the pod's FTDI Basic, whose VCC and GND feed the breadboard's 5 V and GND rails. The breadboard is only a power strip: every signal wire runs straight from its LilyPad petal to the module.
+
+The XBee radio and the accelerometer are 3.3 V parts. The LilyPad XBee board sits on 5 V and makes its own 3.3 V; the accelerometer takes its power from that board's 3.3v petal. D3 reaches the XBee's DIN through a 10 kΩ / 20 kΩ divider. Everything else runs on 5 V.
 
 ## Software design
 
@@ -67,21 +69,21 @@ docs/                wiring diagram
 
 ### 1. Flash the pods
 
-Open `firmware/pod/pod.ino` in the Arduino IDE. Pick Board **LilyPad Arduino** and Processor **ATmega328P**, then upload with an FTDI Basic. Set `POD` to `"P1"` or `"P2"` first.
+Open `firmware/pod/pod.ino` in the Arduino IDE. Set `#define POD_NUMBER` to `1` or `2` first: it picks the pod's name and its own tuning block (joystick axes, tilt fingerprints, hand-height zones). Pick Board **LilyPad Arduino** and Processor **ATmega328P**, then upload with the pod's FTDI Basic plugged onto the LilyPad's header.
 
 **Unplug the RFID SOUT wire before every upload.** It shares the RX line with the FTDI.
 
 New hardware? Run the module tests in `firmware/tests/` first. Each sketch's header says what a pass looks like.
 
-### 2. Configure the XBees (XCTU)
+### 2. Configure the XBees
 
-All three radios use AT mode, PAN ID `4210` and 9600 baud.
+The radios are Series 1 (802.15.4) XBees in AT mode, all on PAN ID `1171` at 9600 baud. Set them in XCTU, or with AT commands through the `t8_xbee_bridge` sketch.
 
-| Radio | Role | DH / DL |
-| --- | --- | --- |
-| Laptop | Coordinator | 0 / FFFF |
-| Pod 1 | Router | 0 / 0 |
-| Pod 2 | Router | 0 / 0 |
+| Radio | MY | DH / DL | Effect |
+| --- | --- | --- | --- |
+| Laptop | 1111 | 0 / FFFF | Broadcasts to both pods |
+| Pod 1 | its own address | 0 / 1111 | Sends to the laptop |
+| Pod 2 | 3333 | 0 / 1111 | Sends to the laptop |
 
 ### 3. Make the voice clips
 
