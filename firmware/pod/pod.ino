@@ -1,6 +1,6 @@
 // Simon Says Showdown - pod firmware (LilyPad Arduino 328)
 // One sketch for both pods: only POD_NUMBER changes. Each pod has its own tuning block below,
-// because the joystick and the tilt controller sit differently in each box.
+// because the joystick and the accelerometer sit differently in each box.
 #include <SoftwareSerial.h>
 
 #define POD_NUMBER 2                   // 1 or 2: set before uploading to each pod
@@ -112,7 +112,7 @@ int readAvg(uint8_t pin) {                 // 1 throwaway read after switching c
   return s / 4;
 }
 
-void calibrate() {                         // hold controllers flat, hands off
+void calibrate() {                         // pod flat and still, hands off
   long jx = 0, jy = 0, tx = 0, ty = 0;
   for (byte i = 0; i < 16; i++) {
     jx += readAvg(JOY_X);  jy += readAvg(JOY_Y);
@@ -290,7 +290,7 @@ void setup() {
   pinMode(BUZ, OUTPUT);
   pinMode(US_TRIG, OUTPUT); pinMode(US_ECHO, INPUT);
   pinMode(RFID_EN, OUTPUT); digitalWrite(RFID_EN, LOW);   // reader on
-  calibrate();                             // controllers flat at power-up
+  calibrate();                             // pod flat and still at power-up
   feedback('G', 500);                      // "I'm alive"
   sendLine("DBG,boot");
 }

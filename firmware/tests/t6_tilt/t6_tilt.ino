@@ -1,7 +1,7 @@
 // Module test 6: LilyPad accelerometer (X = A2, Y = A3, powered from 3.3 V)
-// Hold the controller flat at power-up; that reading becomes zero.
+// Keep the pod flat at power-up; that reading becomes zero.
 // Pass: zero reads about 320-355; tilting each way passes +-30 degrees.
-// To measure countsPerG, stand the controller on its left edge: X raw minus xZero = 1 g.
+// To measure countsPerG, stand the pod on its left edge: X raw minus xZero = 1 g.
 
 const uint8_t TILT_X = A2, TILT_Y = A3;
 float countsPerG = 68.0;                 // replace with the measured value
